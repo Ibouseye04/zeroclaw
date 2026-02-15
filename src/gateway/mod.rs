@@ -323,8 +323,12 @@ async fn handle_webhook(
     };
 
     if auto_save {
+        let sanitized = crate::security::sanitize::sanitize_for_storage(message);
+        if sanitized.injection_detected {
+            tracing::warn!("Prompt injection detected in webhook message — content neutralized");
+        }
         let _ = mem
-            .store("webhook_msg", message, MemoryCategory::Conversation)
+            .store("webhook_msg", &sanitized.content, MemoryCategory::Conversation)
             .await;
     }
 
@@ -476,12 +480,16 @@ async fn handle_whatsapp_message(
             }
         );
 
-        // Auto-save to memory
+        // Auto-save to memory (sanitized)
         if auto_save {
+            let sanitized = crate::security::sanitize::sanitize_for_storage(&msg.content);
+            if sanitized.injection_detected {
+                tracing::warn!("Prompt injection detected in WhatsApp message from {} — content neutralized", msg.sender);
+            }
             let _ = mem
                 .store(
                     &format!("whatsapp_{}", msg.sender),
-                    &msg.content,
+                    &sanitized.content,
                     MemoryCategory::Conversation,
                 )
                 .await;

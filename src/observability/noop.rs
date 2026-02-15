@@ -45,10 +45,17 @@ mod tests {
             tool: "shell".into(),
             duration: Duration::from_secs(1),
             success: true,
+            source: Some("cli".into()),
         });
         obs.record_event(&ObserverEvent::ChannelMessage {
             channel: "cli".into(),
             direction: "inbound".into(),
+            actor: None,
+        });
+        obs.record_event(&ObserverEvent::SecurityEvent {
+            event_type: "test".into(),
+            detail: "test detail".into(),
+            source: None,
         });
         obs.record_event(&ObserverEvent::Error {
             component: "test".into(),
