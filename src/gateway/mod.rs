@@ -176,7 +176,7 @@ fn extract_header<'a>(request: &'a str, header_name: &str) -> Option<&'a str> {
     None
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 async fn handle_request(
     stream: &mut tokio::net::TcpStream,
     method: &str,
@@ -240,7 +240,17 @@ async fn handle_request(
 
         // WhatsApp incoming message webhook
         ("POST", "/whatsapp") => {
-            handle_whatsapp_message(stream, request, provider, model, temperature, mem, auto_save, whatsapp).await;
+            handle_whatsapp_message(
+                stream,
+                request,
+                provider,
+                model,
+                temperature,
+                mem,
+                auto_save,
+                whatsapp,
+            )
+            .await;
         }
 
         ("POST", "/webhook") => {
@@ -328,7 +338,11 @@ async fn handle_webhook(
             tracing::warn!("Prompt injection detected in webhook message — content neutralized");
         }
         let _ = mem
-            .store("webhook_msg", &sanitized.content, MemoryCategory::Conversation)
+            .store(
+                "webhook_msg",
+                &sanitized.content,
+                MemoryCategory::Conversation,
+            )
             .await;
     }
 
@@ -484,7 +498,10 @@ async fn handle_whatsapp_message(
         if auto_save {
             let sanitized = crate::security::sanitize::sanitize_for_storage(&msg.content);
             if sanitized.injection_detected {
-                tracing::warn!("Prompt injection detected in WhatsApp message from {} — content neutralized", msg.sender);
+                tracing::warn!(
+                    "Prompt injection detected in WhatsApp message from {} — content neutralized",
+                    msg.sender
+                );
             }
             let _ = mem
                 .store(
@@ -778,10 +795,7 @@ mod tests {
     #[test]
     fn urlencoding_decode_challenge_token() {
         // Typical Meta webhook challenge
-        assert_eq!(
-            urlencoding_decode("1234567890"),
-            "1234567890"
-        );
+        assert_eq!(urlencoding_decode("1234567890"), "1234567890");
     }
 
     #[test]

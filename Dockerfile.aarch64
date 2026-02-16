@@ -1,0 +1,27 @@
+# Cross-compile zeroclaw for Raspberry Pi (aarch64-unknown-linux-gnu)
+#
+# Build:
+#   docker build -f Dockerfile.aarch64 -o out .
+#
+# The binary will be at: out/zeroclaw
+# Copy to Pi:
+#   scp out/zeroclaw pi@<pi-ip>:/usr/local/bin/
+
+FROM rust:1.83-slim AS builder
+
+RUN apt-get update && \
+    apt-get install -y gcc-aarch64-linux-gnu && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add aarch64-unknown-linux-gnu
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src/ src/
+
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+RUN cargo build --release --target aarch64-unknown-linux-gnu && \
+    aarch64-linux-gnu-strip target/aarch64-unknown-linux-gnu/release/zeroclaw
+
+FROM scratch
+COPY --from=builder /app/target/aarch64-unknown-linux-gnu/release/zeroclaw /zeroclaw
