@@ -137,6 +137,7 @@ impl ComposioTool {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 #[async_trait]
 impl Tool for ComposioTool {
     fn name(&self) -> &str {

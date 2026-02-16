@@ -222,6 +222,7 @@ pub fn init_skills_dir(workspace_dir: &Path) -> Result<()> {
 }
 
 /// Handle the `skills` CLI command
+#[allow(clippy::too_many_lines)]
 pub fn handle_command(command: super::SkillCommands, workspace_dir: &Path) -> Result<()> {
     match command {
         super::SkillCommands::List => {

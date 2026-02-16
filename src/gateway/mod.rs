@@ -176,7 +176,7 @@ fn extract_header<'a>(request: &'a str, header_name: &str) -> Option<&'a str> {
     None
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 async fn handle_request(
     stream: &mut tokio::net::TcpStream,
     method: &str,

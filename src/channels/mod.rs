@@ -51,11 +51,14 @@ fn spawn_supervised_listener(
             match result {
                 Ok(()) => {
                     tracing::warn!("Channel {} exited unexpectedly; restarting", ch.name());
-                    crate::health::mark_component_error(&component, "listener exited unexpectedly");
+                    crate::health::mark_component_error(
+                        &component,
+                        &"listener exited unexpectedly",
+                    );
                 }
                 Err(e) => {
                     tracing::error!("Channel {} error: {e}; restarting", ch.name());
-                    crate::health::mark_component_error(&component, e.to_string());
+                    crate::health::mark_component_error(&component, &e.to_string());
                 }
             }
 
