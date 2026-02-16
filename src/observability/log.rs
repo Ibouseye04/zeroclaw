@@ -27,12 +27,27 @@ impl Observer for LogObserver {
                 tool,
                 duration,
                 success,
+                source,
             } => {
                 let ms = u64::try_from(duration.as_millis()).unwrap_or(u64::MAX);
-                info!(tool = %tool, duration_ms = ms, success = success, "tool.call");
+                let src = source.as_deref().unwrap_or("unknown");
+                info!(tool = %tool, duration_ms = ms, success = success, source = %src, "tool.call");
             }
-            ObserverEvent::ChannelMessage { channel, direction } => {
-                info!(channel = %channel, direction = %direction, "channel.message");
+            ObserverEvent::ChannelMessage {
+                channel,
+                direction,
+                actor,
+            } => {
+                let who = actor.as_deref().unwrap_or("unknown");
+                info!(channel = %channel, direction = %direction, actor = %who, "channel.message");
+            }
+            ObserverEvent::SecurityEvent {
+                event_type,
+                detail,
+                source,
+            } => {
+                let src = source.as_deref().unwrap_or("unknown");
+                info!(event = %event_type, detail = %detail, source = %src, "security.event");
             }
             ObserverEvent::HeartbeatTick => {
                 info!("heartbeat.tick");
@@ -95,10 +110,28 @@ mod tests {
             tool: "shell".into(),
             duration: Duration::from_millis(10),
             success: false,
+            source: Some("cli".into()),
+        });
+        obs.record_event(&ObserverEvent::ToolCall {
+            tool: "file_read".into(),
+            duration: Duration::from_millis(5),
+            success: true,
+            source: None,
         });
         obs.record_event(&ObserverEvent::ChannelMessage {
             channel: "telegram".into(),
             direction: "outbound".into(),
+            actor: Some("user123".into()),
+        });
+        obs.record_event(&ObserverEvent::ChannelMessage {
+            channel: "discord".into(),
+            direction: "inbound".into(),
+            actor: None,
+        });
+        obs.record_event(&ObserverEvent::SecurityEvent {
+            event_type: "injection_detected".into(),
+            detail: "Prompt injection in webhook message".into(),
+            source: Some("webhook:1.2.3.4".into()),
         });
         obs.record_event(&ObserverEvent::HeartbeatTick);
         obs.record_event(&ObserverEvent::Error {

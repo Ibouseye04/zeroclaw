@@ -40,6 +40,17 @@ pub fn all_tools(
     composio_key: Option<&str>,
     browser_config: &crate::config::BrowserConfig,
 ) -> Vec<Box<dyn Tool>> {
+    all_tools_with_composio_config(security, memory, composio_key, browser_config, &[])
+}
+
+/// Create full tool registry with explicit Composio action allowlist.
+pub fn all_tools_with_composio_config(
+    security: &Arc<SecurityPolicy>,
+    memory: Arc<dyn Memory>,
+    composio_key: Option<&str>,
+    browser_config: &crate::config::BrowserConfig,
+    composio_allowed_actions: &[String],
+) -> Vec<Box<dyn Tool>> {
     let mut tools: Vec<Box<dyn Tool>> = vec![
         Box::new(ShellTool::new(security.clone())),
         Box::new(FileReadTool::new(security.clone())),
@@ -58,7 +69,10 @@ pub fn all_tools(
 
     if let Some(key) = composio_key {
         if !key.is_empty() {
-            tools.push(Box::new(ComposioTool::new(key)));
+            tools.push(Box::new(ComposioTool::with_allowlist(
+                key,
+                composio_allowed_actions.to_vec(),
+            )));
         }
     }
 

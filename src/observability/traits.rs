@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-/// Events the observer can record
+/// Events the observer can record.
+///
+/// Events include optional attribution fields (`source`, `actor`) to support
+/// audit logging — a key identity governance requirement for agent security.
 #[derive(Debug, Clone)]
 pub enum ObserverEvent {
     AgentStart {
@@ -15,10 +18,20 @@ pub enum ObserverEvent {
         tool: String,
         duration: Duration,
         success: bool,
+        /// Who/what triggered this tool call (e.g. "webhook", "discord:user123", "cli")
+        source: Option<String>,
     },
     ChannelMessage {
         channel: String,
         direction: String,
+        /// The sender/actor for inbound messages
+        actor: Option<String>,
+    },
+    /// A security-relevant event (injection detected, rate limit hit, etc.)
+    SecurityEvent {
+        event_type: String,
+        detail: String,
+        source: Option<String>,
     },
     HeartbeatTick,
     Error {

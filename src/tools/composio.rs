@@ -15,13 +15,22 @@ use serde_json::json;
 const COMPOSIO_API_BASE: &str = "https://backend.composio.dev/api/v2";
 
 /// A tool that proxies actions to the Composio managed tool platform.
+///
+/// When `allowed_actions` is non-empty, only actions matching the allowlist
+/// can be executed. Supports exact names and prefix wildcards (e.g. `"GMAIL_*"`).
 pub struct ComposioTool {
     api_key: String,
     client: Client,
+    /// Action allowlist. Empty = allow all (backward-compatible default).
+    allowed_actions: Vec<String>,
 }
 
 impl ComposioTool {
     pub fn new(api_key: &str) -> Self {
+        Self::with_allowlist(api_key, Vec::new())
+    }
+
+    pub fn with_allowlist(api_key: &str, allowed_actions: Vec<String>) -> Self {
         Self {
             api_key: api_key.to_string(),
             client: Client::builder()
@@ -29,6 +38,7 @@ impl ComposioTool {
                 .connect_timeout(std::time::Duration::from_secs(10))
                 .build()
                 .unwrap_or_else(|_| Client::new()),
+            allowed_actions,
         }
     }
 
@@ -225,6 +235,25 @@ impl Tool for ComposioTool {
                     .get("action_name")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| anyhow::anyhow!("Missing 'action_name' for execute"))?;
+
+                // Enforce action allowlist
+                if !crate::security::sanitize::is_action_allowed(
+                    action_name,
+                    &self.allowed_actions,
+                ) {
+                    tracing::warn!(
+                        action = action_name,
+                        "Composio action blocked by allowlist"
+                    );
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some(format!(
+                            "Action '{action_name}' is not in the allowed actions list. \
+                             Configure [composio] allowed_actions in config.toml to permit it."
+                        )),
+                    });
+                }
 
                 let params = args.get("params").cloned().unwrap_or(json!({}));
 

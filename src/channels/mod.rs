@@ -568,12 +568,20 @@ pub async fn start_channels(config: Config) -> Result<()> {
             }
         );
 
-        // Auto-save to memory
+        // Auto-save to memory (sanitized to prevent memory poisoning)
         if config.memory.auto_save {
+            let sanitized = crate::security::sanitize::sanitize_for_storage(&msg.content);
+            if sanitized.injection_detected {
+                tracing::warn!(
+                    channel = %msg.channel,
+                    sender = %msg.sender,
+                    "Prompt injection detected in channel message — content neutralized"
+                );
+            }
             let _ = mem
                 .store(
                     &format!("{}_{}", msg.channel, msg.sender),
-                    &msg.content,
+                    &sanitized.content,
                     crate::memory::MemoryCategory::Conversation,
                 )
                 .await;
