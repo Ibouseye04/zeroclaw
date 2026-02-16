@@ -102,6 +102,76 @@ zeroclaw migrate openclaw
 
 > **Dev fallback (no global install):** prefix commands with `cargo run --release --` (example: `cargo run --release -- status`).
 
+## Raspberry Pi
+
+ZeroClaw runs natively on Raspberry Pi 4 (and newer) with 64-bit Raspberry Pi OS. The ~3.4MB binary, <10ms startup, and low memory footprint make it well-suited for always-on Pi deployments.
+
+### Option A: Cross-compile (fastest)
+
+Build on your dev machine, copy the binary to the Pi:
+
+```bash
+# Using the included Dockerfile (no toolchain setup needed)
+docker build -f Dockerfile.aarch64 -o out .
+scp out/zeroclaw pi@<pi-ip>:/usr/local/bin/
+
+# Or with Rust cross-compilation directly
+rustup target add aarch64-unknown-linux-gnu
+# Install linker: apt install gcc-aarch64-linux-gnu (Debian/Ubuntu)
+CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+  cargo build --release --target aarch64-unknown-linux-gnu
+scp target/aarch64-unknown-linux-gnu/release/zeroclaw pi@<pi-ip>:/usr/local/bin/
+```
+
+### Option B: Build on Pi
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Clone and build
+git clone https://github.com/theonlyhennygod/zeroclaw.git
+cd zeroclaw
+cargo build --release
+sudo install -m 755 target/release/zeroclaw /usr/local/bin/
+```
+
+### Option C: Automated setup script
+
+```bash
+# On the Pi — handles install, onboard, and systemd service
+./scripts/pi-setup.sh              # build from source
+./scripts/pi-setup.sh ./zeroclaw   # use a pre-built binary
+```
+
+### Option D: CI artifacts
+
+Pre-built `aarch64-unknown-linux-gnu` binaries are available as artifacts from the CI build workflow on every push to `main`.
+
+### Post-install (on the Pi)
+
+```bash
+# Configure
+zeroclaw onboard --api-key sk-... --provider openrouter
+
+# Test
+zeroclaw agent -m "Hello from Pi!"
+
+# Run as always-on service
+zeroclaw service install
+zeroclaw service start
+
+# Enable lingering so the service survives logout
+sudo loginctl enable-linger $(whoami)
+```
+
+### Pi tips
+
+- **64-bit OS required.** Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash the 64-bit Raspberry Pi OS.
+- **Headless setup.** ZeroClaw is CLI-only — ideal for headless Pi deployments. Use Telegram, Discord, or the webhook gateway to interact remotely.
+- **Local models.** Install [Ollama](https://ollama.com) on the Pi and set `default_provider = "ollama"` for fully offline operation (larger Pi 4 models like 4GB+ recommended).
+- **Tunnel for remote access.** Configure a Tailscale or Cloudflare tunnel so the gateway is reachable from anywhere without port forwarding.
+
 ## Architecture
 
 Every subsystem is a **trait** — swap implementations with a config change, zero code changes.
