@@ -237,14 +237,9 @@ impl Tool for ComposioTool {
                     .ok_or_else(|| anyhow::anyhow!("Missing 'action_name' for execute"))?;
 
                 // Enforce action allowlist
-                if !crate::security::sanitize::is_action_allowed(
-                    action_name,
-                    &self.allowed_actions,
-                ) {
-                    tracing::warn!(
-                        action = action_name,
-                        "Composio action blocked by allowlist"
-                    );
+                if !crate::security::sanitize::is_action_allowed(action_name, &self.allowed_actions)
+                {
+                    tracing::warn!(action = action_name, "Composio action blocked by allowlist");
                     return Ok(ToolResult {
                         success: false,
                         output: String::new(),
