@@ -1,0 +1,112 @@
+# ZeroClaw — Pi Personal AI Config Template
+#
+# Copy to ~/.zeroclaw/config.toml on your Pi
+# Then run: zeroclaw onboard --interactive (to fill in API keys)
+#
+# This config is optimized for always-on Raspberry Pi 4 operation.
+
+# --- Provider ---
+# OpenRouter gives you access to 200+ models with one API key.
+# Get one at: https://openrouter.ai/keys
+api_key = "sk-or-v1-REPLACE_ME"
+default_provider = "openrouter"
+default_model = "anthropic/claude-sonnet-4-20250514"
+default_temperature = 0.7
+
+# --- Memory (persistent brain) ---
+[memory]
+backend = "sqlite"
+auto_save = true
+# Set to "openai" if you have an OpenAI key for vector search.
+# "noop" uses keyword-only search (still works well, saves API calls).
+embedding_provider = "noop"
+vector_weight = 0.3
+keyword_weight = 0.7
+# Smaller cache for Pi memory constraints
+embedding_cache_size = 2000
+chunk_max_tokens = 512
+hygiene_enabled = true
+archive_after_days = 7
+purge_after_days = 30
+
+# --- Observability ---
+[observability]
+backend = "log"
+
+# --- Autonomy ---
+[autonomy]
+level = "supervised"
+workspace_only = true
+allowed_commands = ["git", "ls", "cat", "grep", "find", "df", "free", "uptime", "curl", "ping"]
+forbidden_paths = ["/etc", "/root", "/proc", "/sys", "~/.ssh", "~/.gnupg", "~/.aws"]
+max_actions_per_hour = 60
+max_cost_per_day_cents = 500
+
+# --- Runtime ---
+[runtime]
+kind = "native"
+
+# --- Heartbeat (proactive tasks) ---
+[heartbeat]
+enabled = true
+interval_minutes = 30
+
+# --- Reliability ---
+[reliability]
+provider_retries = 3
+provider_backoff_ms = 1000
+fallback_providers = []
+scheduler_poll_secs = 30
+scheduler_retries = 2
+
+# --- Gateway ---
+[gateway]
+require_pairing = true
+allow_public_bind = false
+
+# --- Tunnel (pick one and configure) ---
+[tunnel]
+# Options: "none", "tailscale", "cloudflare", "ngrok", "custom"
+# Tailscale is recommended for Pi — zero config, always reachable
+provider = "none"
+
+# --- Secrets ---
+[secrets]
+encrypt = true
+
+# --- Browser ---
+[browser]
+enabled = false
+allowed_domains = []
+
+# --- Composio (email, calendar, etc.) ---
+# Enable after setting up at composio.dev
+[composio]
+enabled = false
+# api_key = "COMPOSIO_API_KEY"
+# entity_id = "default"
+# allowed_actions = ["GMAIL_FETCH_EMAILS", "GMAIL_SEND_EMAIL", "GMAIL_CREATE_EMAIL_DRAFT"]
+
+# --- Channels ---
+# Uncomment and configure the channel(s) you want to use.
+
+# Telegram (recommended — easiest setup, works behind NAT)
+# 1. Message @BotFather on Telegram
+# 2. /newbot -> pick a name -> get the token
+# 3. Paste token below and add your Telegram username to allowed_users
+#
+# [channels_config.telegram]
+# bot_token = "123456:ABC-YOUR-BOT-TOKEN"
+# allowed_users = ["your_telegram_username"]
+
+# Discord
+# [channels_config.discord]
+# token = "YOUR_DISCORD_BOT_TOKEN"
+# allowed_users = ["your_discord_user_id"]
+
+# WhatsApp (requires Meta Business account + tunnel)
+# [channels_config.whatsapp]
+# access_token = "EAABx..."
+# phone_number_id = "123456789012345"
+# verify_token = "my-secret-verify-token"
+# allowed_numbers = ["+1234567890"]
