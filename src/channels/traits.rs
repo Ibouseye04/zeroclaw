@@ -22,6 +22,12 @@ pub trait Channel: Send + Sync {
     /// Start listening for incoming messages (long-running)
     async fn listen(&self, tx: tokio::sync::mpsc::Sender<ChannelMessage>) -> anyhow::Result<()>;
 
+    /// Signal that the bot is composing a response (e.g. typing indicator).
+    /// Channels that don't support this can leave the default no-op.
+    async fn send_typing(&self, _recipient: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     /// Check if channel is healthy
     async fn health_check(&self) -> bool {
         true
