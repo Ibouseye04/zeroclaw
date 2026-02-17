@@ -641,17 +641,13 @@ pub async fn start_channels(config: Config) -> Result<()> {
                 .await;
         }
 
-        // Recall relevant memory and inject as context prefix
+        // Recall relevant memory (injected as ephemeral context, not stored)
         let context = build_context(mem.as_ref(), &msg.content).await;
-        let enriched = if context.is_empty() {
-            msg.content.clone()
-        } else {
-            format!("{context}{}", msg.content)
-        };
+        let context_prefix = if context.is_empty() { None } else { Some(context.as_str()) };
 
         // Build conversation key and add to history
         let conv_key = format!("{}:{}", msg.channel, msg.sender);
-        let history = conversations.push_user_message(&conv_key, enriched);
+        let history = conversations.push_user_message(&conv_key, msg.content.clone(), context_prefix);
 
         // Call the LLM with full conversation history
         match provider

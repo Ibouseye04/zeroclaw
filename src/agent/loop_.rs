@@ -207,16 +207,12 @@ pub async fn run(
                     .await;
             }
 
-            // Inject memory context into user message
+            // Recall relevant memory (injected as ephemeral context, not stored)
             let context = build_context(mem.as_ref(), &msg.content).await;
-            let enriched = if context.is_empty() {
-                msg.content.clone()
-            } else {
-                format!("{context}{}", msg.content)
-            };
+            let context_prefix = if context.is_empty() { None } else { Some(context.as_str()) };
 
             // Add to conversation history and get full history
-            let history = conversations.push_user_message("cli", enriched);
+            let history = conversations.push_user_message("cli", msg.content.clone(), context_prefix);
 
             let response = provider
                 .chat_multi_turn(Some(&system_prompt), &history, model_name, temperature)

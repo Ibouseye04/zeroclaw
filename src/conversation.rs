@@ -37,8 +37,19 @@ impl ConversationTracker {
     /// Record a user message and return the full conversation history
     /// (including this message) to send to the provider.
     ///
+    /// Only the raw `content` is stored in history. If `context_prefix` is
+    /// provided, it is prepended to this message **only** in the returned
+    /// history (for the current API call) — it is never persisted.  This
+    /// prevents recalled memory context from accumulating across turns and
+    /// blowing through token limits.
+    ///
     /// If the conversation has timed out, history is cleared first.
-    pub fn push_user_message(&mut self, key: &str, content: String) -> Vec<ChatMessage> {
+    pub fn push_user_message(
+        &mut self,
+        key: &str,
+        content: String,
+        context_prefix: Option<&str>,
+    ) -> Vec<ChatMessage> {
         let now = Instant::now();
 
         let state = self
@@ -68,7 +79,25 @@ impl ConversationTracker {
             state.messages.drain(..drain_count);
         }
 
-        state.messages.clone()
+        // Ensure history starts with a User message (required by Anthropic
+        // and most chat APIs). After trimming an odd-length list to an even
+        // max, the first message can end up being an Assistant message.
+        while state.messages.len() > 1 && state.messages[0].role == ChatRole::Assistant {
+            state.messages.remove(0);
+        }
+
+        let mut history = state.messages.clone();
+
+        // Inject context into the *last* user message for the API call only.
+        if let Some(prefix) = context_prefix {
+            if !prefix.is_empty() {
+                if let Some(last) = history.last_mut() {
+                    last.content = format!("{prefix}{}", last.content);
+                }
+            }
+        }
+
+        history
     }
 
     /// Record the assistant's response for a conversation.
@@ -80,11 +109,14 @@ impl ConversationTracker {
                 content,
             });
 
-            // Trim again in case we're over
+            // Trim to max turns and ensure we still start with a User message
             let max_messages = self.max_turns * 2;
             if state.messages.len() > max_messages {
                 let drain_count = state.messages.len() - max_messages;
                 state.messages.drain(..drain_count);
+            }
+            while state.messages.len() > 1 && state.messages[0].role == ChatRole::Assistant {
+                state.messages.remove(0);
             }
         }
     }
@@ -98,14 +130,14 @@ mod tests {
     fn basic_conversation_flow() {
         let mut tracker = ConversationTracker::new(10, 15);
 
-        let history = tracker.push_user_message("user1", "hello".into());
+        let history = tracker.push_user_message("user1", "hello".into(), None);
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].content, "hello");
         assert_eq!(history[0].role, ChatRole::User);
 
         tracker.push_assistant_message("user1", "hi there".into());
 
-        let history = tracker.push_user_message("user1", "how are you?".into());
+        let history = tracker.push_user_message("user1", "how are you?".into(), None);
         assert_eq!(history.len(), 3);
         assert_eq!(history[0].content, "hello");
         assert_eq!(history[1].content, "hi there");
@@ -116,17 +148,17 @@ mod tests {
     fn separate_users_have_separate_histories() {
         let mut tracker = ConversationTracker::new(10, 15);
 
-        tracker.push_user_message("alice", "hello from alice".into());
+        tracker.push_user_message("alice", "hello from alice".into(), None);
         tracker.push_assistant_message("alice", "hi alice".into());
 
-        tracker.push_user_message("bob", "hello from bob".into());
+        tracker.push_user_message("bob", "hello from bob".into(), None);
         tracker.push_assistant_message("bob", "hi bob".into());
 
-        let alice_history = tracker.push_user_message("alice", "alice again".into());
+        let alice_history = tracker.push_user_message("alice", "alice again".into(), None);
         assert_eq!(alice_history.len(), 3);
         assert_eq!(alice_history[0].content, "hello from alice");
 
-        let bob_history = tracker.push_user_message("bob", "bob again".into());
+        let bob_history = tracker.push_user_message("bob", "bob again".into(), None);
         assert_eq!(bob_history.len(), 3);
         assert_eq!(bob_history[0].content, "hello from bob");
     }
@@ -137,16 +169,80 @@ mod tests {
 
         // Fill 3 full turns (should trim to 2)
         for i in 0..3 {
-            tracker.push_user_message("u", format!("q{i}"));
+            tracker.push_user_message("u", format!("q{i}"), None);
             tracker.push_assistant_message("u", format!("a{i}"));
         }
 
-        let history = tracker.push_user_message("u", "q3".into());
-        // max_turns=2 means max 4 messages, plus this new one = 5, trimmed to 4+1
-        // Actually: after push we have 7, trim to 4 => last 4 = a1, q2, a2, q3
-        assert!(history.len() <= 5);
-        // The last message should always be the new user message
+        let history = tracker.push_user_message("u", "q3".into(), None);
+        // After push we have 7 msgs, trim to 4, then strip leading Assistant
+        // → [U:q2, A:a2, U:q3] (3 msgs)
+        assert_eq!(history.len(), 3);
+        assert_eq!(history[0].role, ChatRole::User, "history must start with User");
+        assert_eq!(history[0].content, "q2");
         assert_eq!(history.last().unwrap().content, "q3");
+    }
+
+    #[test]
+    fn history_always_starts_with_user_after_trim() {
+        // Regression test: trimming an odd-length list to an even max
+        // used to leave the history starting with an Assistant message,
+        // which the Anthropic API rejects.
+        let mut tracker = ConversationTracker::new(2, 15);
+
+        // Build up: U A U A U A (6 msgs)
+        for i in 0..3 {
+            tracker.push_user_message("u", format!("user{i}"), None);
+            tracker.push_assistant_message("u", format!("asst{i}"));
+        }
+
+        // Push one more user msg: 7 msgs → trim to 4 → [A:asst1, U:user2, A:asst2, U:user3]
+        // The fix should strip the leading Assistant → [U:user2, A:asst2, U:user3]
+        let history = tracker.push_user_message("u", "user3".into(), None);
+        assert_eq!(
+            history[0].role,
+            ChatRole::User,
+            "first message must be User, got {:?}: {}",
+            history[0].role,
+            history[0].content
+        );
+        // Every even index (0, 2, ...) should be User, every odd (1, 3, ...) should be Assistant
+        for (i, msg) in history.iter().enumerate() {
+            let expected = if i % 2 == 0 { ChatRole::User } else { ChatRole::Assistant };
+            assert_eq!(msg.role, expected, "message {i} has wrong role: {:?}", msg.role);
+        }
+    }
+
+    #[test]
+    fn context_prefix_only_in_returned_history() {
+        // Regression test: recalled memory context must appear in the API
+        // history for the current turn but must NOT be persisted, otherwise
+        // context accumulates across turns and blows through token limits.
+        let mut tracker = ConversationTracker::new(10, 15);
+
+        // Turn 1: user message with context prefix
+        let history = tracker.push_user_message(
+            "u",
+            "hello".into(),
+            Some("[memory: user likes cats]\n"),
+        );
+        assert_eq!(history.len(), 1);
+        // Returned history should have the prefix
+        assert_eq!(history[0].content, "[memory: user likes cats]\nhello");
+
+        tracker.push_assistant_message("u", "hi cat lover".into());
+
+        // Turn 2: different context this time
+        let history = tracker.push_user_message(
+            "u",
+            "how are you?".into(),
+            Some("[memory: user is in NYC]\n"),
+        );
+        assert_eq!(history.len(), 3);
+        // Turn 1's stored message must NOT contain the old context prefix
+        assert_eq!(history[0].content, "hello", "old context must not be persisted");
+        assert_eq!(history[1].content, "hi cat lover");
+        // Only the latest message has its context
+        assert_eq!(history[2].content, "[memory: user is in NYC]\nhow are you?");
     }
 
     #[test]
@@ -157,13 +253,13 @@ mod tests {
             timeout: Duration::from_millis(1), // 1ms timeout for testing
         };
 
-        tracker.push_user_message("u", "old message".into());
+        tracker.push_user_message("u", "old message".into(), None);
         tracker.push_assistant_message("u", "old reply".into());
 
         // Wait for timeout
         std::thread::sleep(Duration::from_millis(5));
 
-        let history = tracker.push_user_message("u", "new conversation".into());
+        let history = tracker.push_user_message("u", "new conversation".into(), None);
         // Should have reset — only the new message
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].content, "new conversation");
