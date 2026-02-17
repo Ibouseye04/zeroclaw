@@ -88,7 +88,11 @@ enabled = false
 # allowed_actions = ["GMAIL_FETCH_EMAILS", "GMAIL_SEND_EMAIL", "GMAIL_CREATE_EMAIL_DRAFT"]
 
 # --- Channels ---
+# cli = true keeps the terminal channel active alongside messaging channels.
 # Uncomment and configure the channel(s) you want to use.
+
+[channels_config]
+cli = true
 
 # Telegram (recommended — easiest setup, works behind NAT)
 # 1. Message @BotFather on Telegram
