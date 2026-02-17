@@ -40,6 +40,22 @@ impl Channel for TelegramChannel {
         "telegram"
     }
 
+    async fn send_typing(&self, chat_id: &str) -> anyhow::Result<()> {
+        let body = serde_json::json!({
+            "chat_id": chat_id,
+            "action": "typing"
+        });
+
+        let _ = self
+            .client
+            .post(self.api_url("sendChatAction"))
+            .json(&body)
+            .send()
+            .await;
+
+        Ok(())
+    }
+
     async fn send(&self, message: &str, chat_id: &str) -> anyhow::Result<()> {
         let body = serde_json::json!({
             "chat_id": chat_id,

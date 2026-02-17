@@ -5,12 +5,17 @@
 #
 # This config is optimized for always-on Raspberry Pi 4 operation.
 
+# --- Paths (required) ---
+# Adjust if your Pi username is different.
+workspace_dir = "/home/iseye/.zeroclaw/workspace"
+config_path = "/home/iseye/.zeroclaw/config.toml"
+
 # --- Provider ---
 # OpenRouter gives you access to 200+ models with one API key.
 # Get one at: https://openrouter.ai/keys
 api_key = "sk-or-v1-REPLACE_ME"
 default_provider = "openrouter"
-default_model = "anthropic/claude-sonnet-4-20250514"
+default_model = "anthropic/claude-sonnet-4"
 default_temperature = 0.7
 
 # --- Memory (persistent brain) ---
@@ -88,7 +93,11 @@ enabled = false
 # allowed_actions = ["GMAIL_FETCH_EMAILS", "GMAIL_SEND_EMAIL", "GMAIL_CREATE_EMAIL_DRAFT"]
 
 # --- Channels ---
+# cli = true keeps the terminal channel active alongside messaging channels.
 # Uncomment and configure the channel(s) you want to use.
+
+[channels_config]
+cli = true
 
 # Telegram (recommended — easiest setup, works behind NAT)
 # 1. Message @BotFather on Telegram

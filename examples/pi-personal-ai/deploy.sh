@@ -101,6 +101,14 @@ setup_telegram() {
     if grep -q "channels_config.telegram" "$ZEROCLAW_DIR/config.toml" 2>/dev/null; then
         warn "Telegram config already exists in config.toml — edit manually if needed"
     else
+        # Ensure [channels_config] section exists (cli = true required by parser)
+        if ! grep -q '^\[channels_config\]' "$ZEROCLAW_DIR/config.toml" 2>/dev/null; then
+            cat >> "$ZEROCLAW_DIR/config.toml" << TOML
+
+[channels_config]
+cli = true
+TOML
+        fi
         cat >> "$ZEROCLAW_DIR/config.toml" << TOML
 
 [channels_config.telegram]
