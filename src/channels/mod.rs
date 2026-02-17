@@ -473,6 +473,10 @@ pub async fn start_channels(config: Config) -> Result<()> {
             "web_fetch",
             "Fetch a web page or API endpoint and return content as text. HTTPS only, domain allowlist enforced. Works headless.",
         ));
+        tool_descs.push((
+            "web_search",
+            "Search the web for information. Takes a search query and returns titles, URLs, and snippets. Use when: you need to look something up, find current information, or answer questions you don't know. No API key required.",
+        ));
     }
 
     let system_prompt = build_system_prompt(&workspace, &model, &tool_descs, &skills);
