@@ -5,6 +5,11 @@
 #
 # This config is optimized for always-on Raspberry Pi 4 operation.
 
+# --- Paths (required) ---
+# Adjust if your Pi username is different.
+workspace_dir = "/home/iseye/.zeroclaw/workspace"
+config_path = "/home/iseye/.zeroclaw/config.toml"
+
 # --- Provider ---
 # OpenRouter gives you access to 200+ models with one API key.
 # Get one at: https://openrouter.ai/keys
