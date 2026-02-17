@@ -8,6 +8,7 @@ pub mod memory_store;
 pub mod shell;
 pub mod traits;
 pub mod web_fetch;
+pub mod web_search;
 
 pub use browser_open::BrowserOpenTool;
 pub use composio::ComposioTool;
@@ -19,6 +20,7 @@ pub use memory_store::MemoryStoreTool;
 pub use shell::ShellTool;
 pub use traits::Tool;
 pub use web_fetch::WebFetchTool;
+pub use web_search::WebSearchTool;
 #[allow(unused_imports)]
 pub use traits::{ToolResult, ToolSpec};
 
@@ -74,6 +76,7 @@ pub fn all_tools_with_composio_config(
             security.clone(),
             browser_config.allowed_domains.clone(),
         )));
+        tools.push(Box::new(WebSearchTool::new(security.clone())));
     }
 
     if let Some(key) = composio_key {
