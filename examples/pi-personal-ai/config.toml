@@ -15,7 +15,7 @@ config_path = "/home/iseye/.zeroclaw/config.toml"
 # Get one at: https://openrouter.ai/keys
 api_key = "sk-or-v1-REPLACE_ME"
 default_provider = "openrouter"
-default_model = "anthropic/claude-sonnet-4-20250514"
+default_model = "anthropic/claude-sonnet-4"
 default_temperature = 0.7
 
 # --- Memory (persistent brain) ---
