@@ -79,10 +79,12 @@ provider = "none"
 [secrets]
 encrypt = true
 
-# --- Browser ---
+# --- Browser / Web Fetch ---
+# browser_open requires a display (Brave Browser) — leave disabled on headless Pi.
+# web_fetch works headless and is enabled whenever allowed_domains is non-empty.
 [browser]
 enabled = false
-allowed_domains = []
+allowed_domains = ["wikipedia.org", "github.com", "openrouter.ai", "api.openweathermap.org"]
 
 # --- Composio (email, calendar, etc.) ---
 # Enable after setting up at composio.dev

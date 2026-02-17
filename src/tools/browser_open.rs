@@ -184,6 +184,24 @@ async fn open_in_brave(url: &str) -> anyhow::Result<()> {
     }
 }
 
+// ── Public wrappers for reuse by web_fetch ──────────────────────────
+
+pub fn normalize_allowed_domains_pub(domains: Vec<String>) -> Vec<String> {
+    normalize_allowed_domains(domains)
+}
+
+pub fn extract_host_pub(url: &str) -> anyhow::Result<String> {
+    extract_host(url)
+}
+
+pub fn is_private_or_local_host_pub(host: &str) -> bool {
+    is_private_or_local_host(host)
+}
+
+pub fn host_matches_allowlist_pub(host: &str, allowed: &[String]) -> bool {
+    host_matches_allowlist(host, allowed)
+}
+
 fn normalize_allowed_domains(domains: Vec<String>) -> Vec<String> {
     let mut normalized = domains
         .into_iter()

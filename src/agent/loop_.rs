@@ -128,6 +128,12 @@ pub async fn run(
             "Open approved HTTPS URLs in Brave Browser (allowlist-only, no scraping)",
         ));
     }
+    if !config.browser.allowed_domains.is_empty() {
+        tool_descs.push((
+            "web_fetch",
+            "Fetch a web page or API endpoint and return content as text. HTTPS only, domain allowlist enforced. Works headless.",
+        ));
+    }
     let system_prompt = crate::channels::build_system_prompt(
         &config.workspace_dir,
         model_name,
