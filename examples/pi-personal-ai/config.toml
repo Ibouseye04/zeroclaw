@@ -84,7 +84,8 @@ encrypt = true
 # web_fetch works headless and is enabled whenever allowed_domains is non-empty.
 [browser]
 enabled = false
-allowed_domains = ["wikipedia.org", "github.com", "openrouter.ai", "api.openweathermap.org"]
+# Use ["*"] to allow any domain, or list specific domains for tighter control.
+allowed_domains = ["*"]
 
 # --- Composio (email, calendar, etc.) ---
 # Enable after setting up at composio.dev

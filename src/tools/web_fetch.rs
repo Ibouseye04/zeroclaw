@@ -324,6 +324,19 @@ mod tests {
     }
 
     #[test]
+    fn validate_wildcard_allows_any_domain() {
+        let tool = test_tool(vec!["*"]);
+        assert!(tool.validate_url("https://anything.com/page").is_ok());
+    }
+
+    #[test]
+    fn validate_wildcard_still_blocks_private_ip() {
+        let tool = test_tool(vec!["*"]);
+        let err = tool.validate_url("https://127.0.0.1").unwrap_err();
+        assert!(err.to_string().contains("local/private"));
+    }
+
+    #[test]
     fn validate_rejects_http() {
         let tool = test_tool(vec!["example.com"]);
         let err = tool.validate_url("http://example.com").unwrap_err();
