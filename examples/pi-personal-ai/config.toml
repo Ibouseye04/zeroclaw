@@ -33,6 +33,10 @@ chunk_max_tokens = 512
 hygiene_enabled = true
 archive_after_days = 7
 purge_after_days = 30
+# Conversation history — keeps multi-turn context so the AI remembers
+# what you said earlier in the conversation.
+max_history_turns = 20         # keep last 20 turn pairs (user+assistant)
+conversation_timeout_minutes = 15  # reset after 15min of inactivity
 
 # --- Observability ---
 [observability]

@@ -545,12 +545,23 @@ pub async fn start_channels(config: Config) -> Result<()> {
         return Ok(());
     }
 
+    // Conversation history tracker
+    let mut conversations = crate::conversation::ConversationTracker::new(
+        config.memory.max_history_turns,
+        config.memory.conversation_timeout_minutes,
+    );
+
     println!("🦀 ZeroClaw Channel Server");
     println!("  🤖 Model:    {model}");
     println!(
         "  🧠 Memory:   {} (auto-save: {})",
         config.memory.backend,
         if config.memory.auto_save { "on" } else { "off" }
+    );
+    println!(
+        "  💬 History:  {} turns, {}min timeout",
+        config.memory.max_history_turns,
+        config.memory.conversation_timeout_minutes,
     );
     println!(
         "  📡 Channels: {}",
@@ -630,7 +641,7 @@ pub async fn start_channels(config: Config) -> Result<()> {
                 .await;
         }
 
-        // Recall relevant memory and inject as context
+        // Recall relevant memory and inject as context prefix
         let context = build_context(mem.as_ref(), &msg.content).await;
         let enriched = if context.is_empty() {
             msg.content.clone()
@@ -638,12 +649,19 @@ pub async fn start_channels(config: Config) -> Result<()> {
             format!("{context}{}", msg.content)
         };
 
-        // Call the LLM with system prompt (identity + soul + tools)
+        // Build conversation key and add to history
+        let conv_key = format!("{}:{}", msg.channel, msg.sender);
+        let history = conversations.push_user_message(&conv_key, enriched);
+
+        // Call the LLM with full conversation history
         match provider
-            .chat_with_system(Some(&system_prompt), &enriched, &model, temperature)
+            .chat_multi_turn(Some(&system_prompt), &history, &model, temperature)
             .await
         {
             Ok(response) => {
+                // Record assistant response in conversation history
+                conversations.push_assistant_message(&conv_key, response.clone());
+
                 println!(
                     "  🤖 Reply: {}",
                     if response.len() > 80 {

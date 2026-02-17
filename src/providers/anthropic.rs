@@ -1,4 +1,4 @@
-use crate::providers::traits::Provider;
+use crate::providers::traits::{ChatMessage, Provider};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -68,6 +68,58 @@ impl Provider for AnthropicProvider {
                 role: "user".to_string(),
                 content: message.to_string(),
             }],
+            temperature,
+        };
+
+        let response = self
+            .client
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error = response.text().await?;
+            anyhow::bail!("Anthropic API error: {error}");
+        }
+
+        let chat_response: ChatResponse = response.json().await?;
+
+        chat_response
+            .content
+            .into_iter()
+            .next()
+            .map(|c| c.text)
+            .ok_or_else(|| anyhow::anyhow!("No response from Anthropic"))
+    }
+
+    async fn chat_multi_turn(
+        &self,
+        system_prompt: Option<&str>,
+        history: &[ChatMessage],
+        model: &str,
+        temperature: f64,
+    ) -> anyhow::Result<String> {
+        let api_key = self.api_key.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("Anthropic API key not set. Set ANTHROPIC_API_KEY or edit config.toml.")
+        })?;
+
+        let messages: Vec<Message> = history
+            .iter()
+            .map(|m| Message {
+                role: m.role.as_str().to_string(),
+                content: m.content.clone(),
+            })
+            .collect();
+
+        let request = ChatRequest {
+            model: model.to_string(),
+            max_tokens: 4096,
+            system: system_prompt.map(ToString::to_string),
+            messages,
             temperature,
         };
 

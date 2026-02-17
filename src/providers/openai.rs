@@ -1,4 +1,4 @@
-use crate::providers::traits::Provider;
+use crate::providers::traits::{ChatMessage, Provider};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -75,6 +75,62 @@ impl Provider for OpenAiProvider {
             role: "user".to_string(),
             content: message.to_string(),
         });
+
+        let request = ChatRequest {
+            model: model.to_string(),
+            messages,
+            temperature,
+        };
+
+        let response = self
+            .client
+            .post("https://api.openai.com/v1/chat/completions")
+            .header("Authorization", format!("Bearer {api_key}"))
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error = response.text().await?;
+            anyhow::bail!("OpenAI API error: {error}");
+        }
+
+        let chat_response: ChatResponse = response.json().await?;
+
+        chat_response
+            .choices
+            .into_iter()
+            .next()
+            .map(|c| c.message.content)
+            .ok_or_else(|| anyhow::anyhow!("No response from OpenAI"))
+    }
+
+    async fn chat_multi_turn(
+        &self,
+        system_prompt: Option<&str>,
+        history: &[ChatMessage],
+        model: &str,
+        temperature: f64,
+    ) -> anyhow::Result<String> {
+        let api_key = self.api_key.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("OpenAI API key not set. Set OPENAI_API_KEY or edit config.toml.")
+        })?;
+
+        let mut messages = Vec::new();
+
+        if let Some(sys) = system_prompt {
+            messages.push(Message {
+                role: "system".to_string(),
+                content: sys.to_string(),
+            });
+        }
+
+        for m in history {
+            messages.push(Message {
+                role: m.role.as_str().to_string(),
+                content: m.content.clone(),
+            });
+        }
 
         let request = ChatRequest {
             model: model.to_string(),

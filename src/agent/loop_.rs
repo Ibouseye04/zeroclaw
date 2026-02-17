@@ -185,6 +185,11 @@ pub async fn run(
         println!("🦀 ZeroClaw Interactive Mode");
         println!("Type /quit to exit.\n");
 
+        let mut conversations = crate::conversation::ConversationTracker::new(
+            config.memory.max_history_turns,
+            config.memory.conversation_timeout_minutes,
+        );
+
         let (tx, mut rx) = tokio::sync::mpsc::channel(32);
         let cli = crate::channels::CliChannel::new();
 
@@ -210,9 +215,16 @@ pub async fn run(
                 format!("{context}{}", msg.content)
             };
 
+            // Add to conversation history and get full history
+            let history = conversations.push_user_message("cli", enriched);
+
             let response = provider
-                .chat_with_system(Some(&system_prompt), &enriched, model_name, temperature)
+                .chat_multi_turn(Some(&system_prompt), &history, model_name, temperature)
                 .await?;
+
+            // Record assistant response in conversation history
+            conversations.push_assistant_message("cli", response.clone());
+
             println!("\n{response}\n");
 
             if config.memory.auto_save {
