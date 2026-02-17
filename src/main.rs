@@ -16,6 +16,7 @@ use tracing_subscriber::FmtSubscriber;
 mod agent;
 mod channels;
 mod config;
+mod conversation;
 mod cron;
 mod daemon;
 mod doctor;

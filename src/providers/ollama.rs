@@ -1,4 +1,4 @@
-use crate::providers::traits::Provider;
+use crate::providers::traits::{ChatMessage, Provider};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -75,6 +75,51 @@ impl Provider for OllamaProvider {
             role: "user".to_string(),
             content: message.to_string(),
         });
+
+        let request = ChatRequest {
+            model: model.to_string(),
+            messages,
+            stream: false,
+            options: Options { temperature },
+        };
+
+        let url = format!("{}/api/chat", self.base_url);
+
+        let response = self.client.post(&url).json(&request).send().await?;
+
+        if !response.status().is_success() {
+            let error = response.text().await?;
+            anyhow::bail!(
+                "Ollama error: {error}. Is Ollama running? (brew install ollama && ollama serve)"
+            );
+        }
+
+        let chat_response: ChatResponse = response.json().await?;
+        Ok(chat_response.message.content)
+    }
+
+    async fn chat_multi_turn(
+        &self,
+        system_prompt: Option<&str>,
+        history: &[ChatMessage],
+        model: &str,
+        temperature: f64,
+    ) -> anyhow::Result<String> {
+        let mut messages = Vec::new();
+
+        if let Some(sys) = system_prompt {
+            messages.push(Message {
+                role: "system".to_string(),
+                content: sys.to_string(),
+            });
+        }
+
+        for m in history {
+            messages.push(Message {
+                role: m.role.as_str().to_string(),
+                content: m.content.clone(),
+            });
+        }
 
         let request = ChatRequest {
             model: model.to_string(),

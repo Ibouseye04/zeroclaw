@@ -187,6 +187,12 @@ pub struct MemoryConfig {
     /// Max tokens per chunk for document splitting
     #[serde(default = "default_chunk_size")]
     pub chunk_max_tokens: usize,
+    /// Max conversation turn pairs to keep in history (e.g. 20 = up to 20 user + 20 assistant msgs)
+    #[serde(default = "default_max_history_turns")]
+    pub max_history_turns: usize,
+    /// Minutes of inactivity before conversation history resets
+    #[serde(default = "default_conversation_timeout_minutes")]
+    pub conversation_timeout_minutes: u64,
 }
 
 fn default_embedding_provider() -> String {
@@ -222,6 +228,12 @@ fn default_cache_size() -> usize {
 fn default_chunk_size() -> usize {
     512
 }
+fn default_max_history_turns() -> usize {
+    20
+}
+fn default_conversation_timeout_minutes() -> u64 {
+    15
+}
 
 impl Default for MemoryConfig {
     fn default() -> Self {
@@ -239,6 +251,8 @@ impl Default for MemoryConfig {
             keyword_weight: default_keyword_weight(),
             embedding_cache_size: default_cache_size(),
             chunk_max_tokens: default_chunk_size(),
+            max_history_turns: default_max_history_turns(),
+            conversation_timeout_minutes: default_conversation_timeout_minutes(),
         }
     }
 }
