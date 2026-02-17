@@ -468,6 +468,13 @@ pub async fn start_channels(config: Config) -> Result<()> {
         ));
     }
 
+    if !config.browser.allowed_domains.is_empty() {
+        tool_descs.push((
+            "web_fetch",
+            "Fetch a web page or API endpoint and return content as text. HTTPS only, domain allowlist enforced. Works headless.",
+        ));
+    }
+
     let system_prompt = build_system_prompt(&workspace, &model, &tool_descs, &skills);
 
     if !skills.is_empty() {

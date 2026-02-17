@@ -7,6 +7,7 @@ pub mod memory_recall;
 pub mod memory_store;
 pub mod shell;
 pub mod traits;
+pub mod web_fetch;
 
 pub use browser_open::BrowserOpenTool;
 pub use composio::ComposioTool;
@@ -17,6 +18,7 @@ pub use memory_recall::MemoryRecallTool;
 pub use memory_store::MemoryStoreTool;
 pub use shell::ShellTool;
 pub use traits::Tool;
+pub use web_fetch::WebFetchTool;
 #[allow(unused_imports)]
 pub use traits::{ToolResult, ToolSpec};
 
@@ -62,6 +64,13 @@ pub fn all_tools_with_composio_config(
 
     if browser_config.enabled {
         tools.push(Box::new(BrowserOpenTool::new(
+            security.clone(),
+            browser_config.allowed_domains.clone(),
+        )));
+    }
+
+    if !browser_config.allowed_domains.is_empty() {
+        tools.push(Box::new(WebFetchTool::new(
             security.clone(),
             browser_config.allowed_domains.clone(),
         )));

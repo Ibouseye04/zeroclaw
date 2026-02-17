@@ -184,6 +184,24 @@ async fn open_in_brave(url: &str) -> anyhow::Result<()> {
     }
 }
 
+// ── Public wrappers for reuse by web_fetch ──────────────────────────
+
+pub fn normalize_allowed_domains_pub(domains: Vec<String>) -> Vec<String> {
+    normalize_allowed_domains(domains)
+}
+
+pub fn extract_host_pub(url: &str) -> anyhow::Result<String> {
+    extract_host(url)
+}
+
+pub fn is_private_or_local_host_pub(host: &str) -> bool {
+    is_private_or_local_host(host)
+}
+
+pub fn host_matches_allowlist_pub(host: &str, allowed: &[String]) -> bool {
+    host_matches_allowlist(host, allowed)
+}
+
 fn normalize_allowed_domains(domains: Vec<String>) -> Vec<String> {
     let mut normalized = domains
         .into_iter()
@@ -262,7 +280,8 @@ fn extract_host(url: &str) -> anyhow::Result<String> {
 
 fn host_matches_allowlist(host: &str, allowed_domains: &[String]) -> bool {
     allowed_domains.iter().any(|domain| {
-        host == domain
+        domain == "*"
+            || host == domain
             || host
                 .strip_suffix(domain)
                 .is_some_and(|prefix| prefix.ends_with('.'))
@@ -419,6 +438,23 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("allowed_domains"));
+    }
+
+    #[test]
+    fn validate_accepts_wildcard_domain() {
+        let tool = test_tool(vec!["*"]);
+        assert!(tool.validate_url("https://anydomain.com/page").is_ok());
+        assert!(tool.validate_url("https://sub.deep.example.org/x").is_ok());
+    }
+
+    #[test]
+    fn validate_wildcard_still_blocks_private_ip() {
+        let tool = test_tool(vec!["*"]);
+        let err = tool
+            .validate_url("https://192.168.1.1")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("local/private"));
     }
 
     #[test]
